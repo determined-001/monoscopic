@@ -3,6 +3,7 @@
 import { Bell, Zap, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAlerts } from "@/lib/hooks/useAlerts";
+import type { AlertTrigger } from "@monoscope/types";
 
 // ─── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ export function AlertsSummary() {
   const todayStart   = new Date(); todayStart.setHours(0, 0, 0, 0);
   const triggeredToday = alerts.reduce((sum, a) => {
     const todayTriggers = (a.triggers ?? []).filter(
-      (t) => new Date(t.createdAt) >= todayStart,
+      (t: AlertTrigger) => new Date(t.createdAt) >= todayStart,
     ).length;
     return sum + todayTriggers;
   }, 0);
