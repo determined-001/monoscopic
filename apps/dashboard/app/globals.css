@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+/* ─── Class-based dark mode ─── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ═══════════════════════════════════════════════════
+   CSS Custom Properties
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Purple Palette ─── */
+  --purple-50: #F5F0FF;
+  --purple-100: #EDE5FF;
+  --purple-200: #D4C4FF;
+  --purple-300: #B49AFF;
+  --purple-400: #9370FF;
+  --purple-500: #836EF9;
+  --purple-600: #6F5BD6;
+  --purple-700: #5A45B5;
+  --purple-800: #3D2D7A;
+  --purple-900: #271C52;
+
+  /* ─── Semantic Colors — Light Mode ─── */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8F7FC;
+  --bg-tertiary: #F0EEF8;
+  --text-primary: #111015;
+  --text-secondary: #6B6780;
+  --text-muted: #A09CB0;
+  --border-default: #E8E5F0;
+  --border-active: #836EF9;
+
+  /* ─── Data Visualization ─── */
+  --chart-positive: #22C55E;
+  --chart-negative: #EF4444;
+  --chart-neutral: #836EF9;
+  --chart-series-1: #836EF9;
+  --chart-series-2: #38BDF8;
+  --chart-series-3: #FBBF24;
+  --chart-series-4: #A78BFA;
+  --chart-area-fill: rgba(131, 110, 249, 0.08);
+
+  /* ─── Nav glass background (semi-transparent for backdrop-blur effect) ─── */
+  --bg-nav: rgba(255, 255, 255, 0.85);
+
+  /* ─── Gradients ─── */
+  --gradient-brand: linear-gradient(135deg, #836EF9 0%, #38BDF8 100%);
+  --gradient-card-glow: radial-gradient(ellipse at top, rgba(131, 110, 249, 0.06), transparent);
+
+  /* ─── Shadows ─── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10);
+  --shadow-glow: 0 0 20px rgba(131, 110, 249, 0.15);
+}
+
+/* ─── Safe-area utility ─── */
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* ─── Dark Mode Overrides ─── */
+.dark {
+  --bg-primary: #0D0B14;
+  --bg-secondary: #16132A;
+  --bg-tertiary: #1E1A38;
+  --text-primary: #F0EEF8;
+  --text-secondary: #9490A8;
+  --text-muted: #5E5A72;
+  --border-default: #2A2545;
+  --border-active: #836EF9;
+  --chart-area-fill: rgba(131, 110, 249, 0.12);
+  --bg-nav: rgba(13, 11, 20, 0.85);
+}
+
+/* ═══════════════════════════════════════════════════
+   Tailwind Theme Extension
+   ═══════════════════════════════════════════════════ */
+
+@theme inline {
+  /* ─── Purple → Tailwind color utilities ─── */
+  --color-purple-50: #F5F0FF;
+  --color-purple-100: #EDE5FF;
+  --color-purple-200: #D4C4FF;
+  --color-purple-300: #B49AFF;
+  --color-purple-400: #9370FF;
+  --color-purple-500: #836EF9;
+  --color-purple-600: #6F5BD6;
+  --color-purple-700: #5A45B5;
+  --color-purple-800: #3D2D7A;
+  --color-purple-900: #271C52;
+
+  /* ─── Data colors → Tailwind utilities ─── */
+  --color-chart-positive: #22C55E;
+  --color-chart-negative: #EF4444;
+  --color-chart-neutral: #836EF9;
+  --color-chart-series-1: #836EF9;
+  --color-chart-series-2: #38BDF8;
+  --color-chart-series-3: #FBBF24;
+  --color-chart-series-4: #A78BFA;
+
+  /* ─── Semantic colors (reference CSS vars → change with dark mode) ─── */
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-default: var(--border-default);
+  --color-border-active: var(--border-active);
+
+  /* ─── Border Radius ─── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* ─── Shadows ─── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10);
+  --shadow-glow: 0 0 20px rgba(131, 110, 249, 0.15);
+
+  /* ─── Custom animations ─── */
+  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
+
+  /* ─── Fonts (CSS vars set by next/font in layout.tsx) ─── */
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+/* ═══════════════════════════════════════════════════
+   Base Styles
+   ═══════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-inter, Inter, system-ui, sans-serif);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--purple-400);
+}
+
+/* ─── Shimmer keyframe (used by skeleton chart variant) ─── */
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(250%);  }
+}
+
+/* ─── Hero orb drift (slow infinite drift + scale pulse) ─── */
+@keyframes orb-drift {
+  0%   { transform: translate(0px, 0px)     scale(1);    opacity: 0.08; }
+  25%  { transform: translate(40px, -30px)  scale(1.08); opacity: 0.11; }
+  50%  { transform: translate(-20px, 20px)  scale(0.96); opacity: 0.07; }
+  75%  { transform: translate(-40px, -10px) scale(1.04); opacity: 0.10; }
+  100% { transform: translate(0px, 0px)     scale(1);    opacity: 0.08; }
+}
+
+/* ─── Scroll indicator bounce ─── */
+@keyframes bounce-y {
+  0%, 100% { transform: translateY(0);   }
+  50%       { transform: translateY(8px); }
+}
+
+/* ─── Token price flash ─── */
+@keyframes price-flash-up {
+  0%, 100% { background-color: transparent; }
+  40%       { background-color: rgba(34, 197, 94, 0.15); }
+}
+@keyframes price-flash-down {
+  0%, 100% { background-color: transparent; }
+  40%       { background-color: rgba(239, 68, 68, 0.15); }
+}
+.animate-price-up   { animation: price-flash-up   0.8s ease-out; }
+.animate-price-down { animation: price-flash-down 0.8s ease-out; }
+
+/* ─── Scrollbar-none utility ─── */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

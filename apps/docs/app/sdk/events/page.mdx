@@ -1,0 +1,126 @@
+export const metadata = { title: "Events Reference" };
+
+# Events Reference
+
+Every message from the Monoscope server arrives as a `MonoscopeEvent`:
+
+```typescript
+interface MonoscopeEvent {
+  type: "alert_triggered" | "ready" | "error";
+  data: {
+    alert?: Alert;
+    trigger?: AlertTrigger;
+    message?: string;
+  };
+}
+```
+
+---
+
+## `ready`
+
+Sent immediately after a successful connection and authentication.
+
+```typescript
+{ type: "ready", data: {} }
+```
+
+**When to use:** Confirm the connection is live before trusting subsequent events.
+
+```typescript
+monoscope("mk_live_...", (event) => {
+  if (event.type === "ready") {
+    console.log("Authenticated and listening");
+  }
+});
+```
+
+---
+
+## `alert_triggered`
+
+Sent when one of your enabled alerts fires.
+
+```typescript
+{
+  type: "alert_triggered",
+  data: {
+    alert: Alert,
+    trigger: AlertTrigger,
+  }
+}
+```
+
+### Whale alert (`type: "whale"`)
+
+Fires when a tracked wallet executes a transaction.
+
+```typescript
+{
+  type: "alert_triggered",
+  data: {
+    alert: {
+      id: "clx...",
+      type: "whale",
+      name: "Big Fish Moved",
+      condition: "any_transaction",
+      threshold: 0,
+      enabled: true,
+      createdAt: "2025-04-07T15:00:00.000Z"
+    },
+    trigger: {
+      id: "cly...",
+      alertId: "clx...",
+      value: 1,
+      createdAt: "2025-04-07T15:01:23.000Z"
+    }
+  }
+}
+```
+
+### Gas alert (`type: "gas"`)
+
+Fires when Monad network gas utilization crosses your configured threshold.
+
+```typescript
+{
+  type: "alert_triggered",
+  data: {
+    alert: {
+      id: "clz...",
+      type: "gas",
+      name: "Gas Spike",
+      condition: "above",
+      threshold: 80,
+      enabled: true,
+      createdAt: "2025-04-07T12:00:00.000Z"
+    },
+    trigger: {
+      id: "cla...",
+      alertId: "clz...",
+      value: 87.3,
+      createdAt: "2025-04-07T15:04:11.000Z"
+    }
+  }
+}
+```
+
+---
+
+## `error`
+
+Sent when the server encounters an authentication or processing error.
+
+```typescript
+{
+  type: "error",
+  data: { message: "Invalid or revoked API key" }
+}
+```
+
+After an `error` event the server closes the connection. The SDK will attempt to reconnect unless `stop()` has been called.
+
+| Message | Cause |
+|---------|-------|
+| `"Invalid or revoked API key"` | Key doesn't exist or has been revoked |
+| `"Missing API key"` | Connected without a `?key=` query parameter |

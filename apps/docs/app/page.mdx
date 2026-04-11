@@ -1,0 +1,45 @@
+export const metadata = { title: "Introduction" };
+
+# Introduction
+
+**Monoscope** is on-chain intelligence infrastructure for the Monad ecosystem. It gives developers and traders real-time access to whale activity, custom price and gas alerts, and portfolio tracking — all in one place.
+
+## What you can build
+
+With the Monoscope SDK and API, you can:
+
+- **Receive real-time alert events** in your own server or application
+- **Trigger notifications** (Telegram, Discord, Slack, email) when a whale moves or gas spikes
+- **Build automated trading bots** that react to on-chain conditions you define
+- **Embed Monad activity feeds** in your own dashboards
+
+## How it works
+
+1. You define alerts in the Monoscope dashboard (whale wallet activity, gas thresholds)
+2. Monoscope monitors the Monad network in real time via a WebSocket connection to the chain
+3. When an alert condition is met, Monoscope fires an event to every connected SDK client authenticated with your API key
+4. Your code receives the event and does whatever you want with it
+
+## Architecture
+
+```
+Monad Network
+     │  (WebSocket)
+     ▼
+Monoscope API Server
+     │  (WebSocket, authenticated via API key)
+     ▼
+Your Application  ←──  @monoscope/sdk
+```
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| `@monoscope/sdk` | TypeScript/JavaScript SDK for receiving alert events |
+
+## Next steps
+
+- [Quickstart](/quickstart) — get your first event in 5 minutes
+- [Authentication](/authentication) — generate your API key
+- [SDK Reference](/sdk) — full API documentation

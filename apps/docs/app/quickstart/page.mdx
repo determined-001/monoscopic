@@ -1,0 +1,86 @@
+export const metadata = { title: "Quickstart" };
+
+# Quickstart
+
+Get your first Monoscope alert event in under 5 minutes.
+
+## 1. Get an API key
+
+Open the Monoscope dashboard, go to **Settings → Developer**, and click **Generate API Key**. Copy the key — it's only shown once.
+
+## 2. Install the SDK
+
+```bash
+npm install @monoscope/sdk
+# or
+pnpm add @monoscope/sdk
+# or
+yarn add @monoscope/sdk
+```
+
+## 3. Connect and listen
+
+```typescript
+import { monoscope } from "@monoscope/sdk";
+
+const stop = monoscope("mk_live_YOUR_KEY_HERE", (event) => {
+  if (event.type === "alert_triggered") {
+    const { alert, trigger } = event.data;
+    console.log(`Alert fired: ${alert.name}`);
+    console.log(`Value: ${trigger.value}`);
+  }
+});
+
+// Stop listening when you're done
+// stop();
+```
+
+## 4. Create an alert
+
+In the Monoscope dashboard, go to **Alerts** and create a new alert:
+
+- **Whale alert** — fires when a tracked wallet makes a transaction
+- **Gas alert** — fires when Monad network gas load crosses a threshold
+
+Once created and enabled, any matching on-chain activity will trigger the event in your SDK listener.
+
+## Full example: Node.js notification bot
+
+```typescript
+import { monoscope } from "@monoscope/sdk";
+
+const stop = monoscope(
+  process.env.MONOSCOPE_API_KEY!,
+  async (event) => {
+    if (event.type === "ready") {
+      console.log("Connected to Monoscope");
+    }
+
+    if (event.type === "alert_triggered") {
+      const { alert, trigger } = event.data;
+
+      await fetch(process.env.DISCORD_WEBHOOK!, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: `🚨 **${alert.name}** triggered — value: ${trigger.value}`,
+        }),
+      });
+    }
+  },
+  {
+    reconnectInterval: 5000,
+  },
+);
+
+process.on("SIGINT", () => {
+  stop();
+  process.exit(0);
+});
+```
+
+## Next steps
+
+- [Authentication](/authentication) — understand API key scopes and rotation
+- [SDK Reference](/sdk) — full function and type documentation
+- [Events Reference](/sdk/events) — all event types and payload shapes

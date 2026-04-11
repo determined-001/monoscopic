@@ -1,0 +1,29 @@
+{
+  "name": "@monoscope/core",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Core data pipeline — block ingestion, protocol adapters, analytics",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "default": "./src/index.js",
+      "types": "./src/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@monoscope/types": "workspace:*",
+    "viem": "^2.47.6",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37",
+    "@types/ws": "^8.18.1"
+  }
+}

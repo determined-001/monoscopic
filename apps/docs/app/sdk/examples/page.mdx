@@ -1,0 +1,132 @@
+export const metadata = { title: "Examples" };
+
+# Examples
+
+## Node.js server
+
+A long-running process that listens for alerts and logs them.
+
+```typescript
+import { monoscope } from "@monoscope/sdk";
+
+const stop = monoscope(
+  process.env.MONOSCOPE_API_KEY!,
+  (event) => {
+    if (event.type === "ready") console.log("[monoscope] connected");
+    if (event.type === "alert_triggered") {
+      const { alert, trigger } = event.data;
+      console.log(`[alert] ${alert!.name} — ${trigger!.value}`);
+    }
+    if (event.type === "error") console.error(`[error] ${event.data.message}`);
+  },
+);
+
+process.on("SIGINT", () => { stop(); process.exit(0); });
+```
+
+---
+
+## Discord webhook bot
+
+```typescript
+import { monoscope } from "@monoscope/sdk";
+
+monoscope(process.env.MONOSCOPE_API_KEY!, async (event) => {
+  if (event.type !== "alert_triggered") return;
+  const { alert, trigger } = event.data;
+
+  await fetch(process.env.DISCORD_WEBHOOK!, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      embeds: [{
+        title: `🚨 ${alert!.name}`,
+        color: alert!.type === "gas" ? 0xf59e0b : 0x836ef9,
+        fields: [
+          { name: "Type", value: alert!.type, inline: true },
+          { name: "Value", value: String(trigger!.value), inline: true },
+          { name: "Threshold", value: String(alert!.threshold), inline: true },
+        ],
+        timestamp: trigger!.createdAt,
+      }],
+    }),
+  });
+});
+```
+
+---
+
+## Telegram bot
+
+```typescript
+import { monoscope } from "@monoscope/sdk";
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
+const CHAT_ID   = process.env.TELEGRAM_CHAT_ID!;
+
+async function send(text: string) {
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: CHAT_ID, text, parse_mode: "Markdown" }),
+  });
+}
+
+monoscope(process.env.MONOSCOPE_API_KEY!, async (event) => {
+  if (event.type === "ready") await send("✅ Monoscope connected");
+  if (event.type === "alert_triggered") {
+    const { alert, trigger } = event.data;
+    await send(`🚨 *${alert!.name}*\nType: ${alert!.type}\nValue: \`${trigger!.value}\``);
+  }
+});
+```
+
+---
+
+## Next.js API route
+
+```typescript
+// app/api/monoscope/route.ts
+import { monoscope } from "@monoscope/sdk";
+
+let initialized = false;
+
+function init() {
+  if (initialized) return;
+  initialized = true;
+  monoscope(process.env.MONOSCOPE_API_KEY!, async (event) => {
+    if (event.type === "alert_triggered") {
+      console.log("Alert triggered:", event.data.alert?.name);
+      // save to DB, push to queue, etc.
+    }
+  });
+}
+
+export async function GET() {
+  init();
+  return Response.json({ status: "listening" });
+}
+```
+
+> **Note:** For production, run the SDK listener in a separate long-lived Node.js process rather than inside a serverless function that may be terminated at any time.
+
+---
+
+## Browser (vanilla JS)
+
+```html
+<script type="module">
+  import { monoscope } from "https://esm.sh/@monoscope/sdk";
+
+  monoscope("mk_live_...", (event) => {
+    if (event.type === "alert_triggered") {
+      document.getElementById("log").textContent +=
+        `\n${event.data.alert.name}: ${event.data.trigger.value}`;
+    }
+  });
+</script>
+
+<pre id="log">Listening for alerts...</pre>
+```
+
+> **Warning:** Never embed your API key in client-side code served publicly. Use this pattern only for private/internal tools.

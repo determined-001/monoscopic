@@ -1,0 +1,59 @@
+export const metadata = { title: "Authentication" };
+
+# Authentication
+
+Monoscope uses API keys to authenticate SDK connections.
+
+## Generating a key
+
+1. Open the Monoscope dashboard
+2. Go to **Settings → Developer**
+3. Click **Generate API Key**
+4. Give the key a label (e.g. "production bot", "local dev")
+5. Copy the full key — it starts with `mk_live_` and is **only shown once**
+
+> **Important:** Store your API key securely. Treat it like a password. Never commit it to version control or expose it in client-side code.
+
+## Using your key
+
+Pass the key as the first argument to the `monoscope()` function:
+
+```typescript
+import { monoscope } from "@monoscope/sdk";
+
+const stop = monoscope("mk_live_...", (event) => {
+  // handle events
+});
+```
+
+Internally, the SDK authenticates by appending your key as a query parameter to the WebSocket URL:
+
+```
+wss://api.monoscope.xyz?key=mk_live_...
+```
+
+The server validates the key against the database. If valid, it sends a `ready` event and begins streaming alerts. If invalid or revoked, the connection is closed immediately.
+
+## Viewing existing keys
+
+In **Settings → Developer**, existing keys are listed with:
+- Their label
+- A masked preview (`mk_live_xxxx...abcd`)
+- Creation date
+
+The full key is never shown again after creation.
+
+## Revoking a key
+
+Click **Revoke** next to any key in **Settings → Developer**. The key is immediately invalidated — any SDK connections using it will be disconnected and cannot reconnect with that key.
+
+## Security best practices
+
+- Use environment variables: `MONOSCOPE_API_KEY=mk_live_...`
+- Generate separate keys per environment (dev, staging, production)
+- Revoke keys immediately if compromised
+- Never use API keys in browser/client-side code visible to the public
+
+## Rate limits
+
+Each API key can maintain one active WebSocket connection at a time.

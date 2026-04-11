@@ -1,0 +1,21 @@
+{
+  "name": "@monoscope/types",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared TypeScript types for Monoscope",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {}
+}

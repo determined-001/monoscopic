@@ -1,0 +1,24 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# builds
+dist
+.next
+out
+build
+
+# turbo
+.turbo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# testing
+coverage
+
+# misc
+.DS_Store
+*.log

@@ -1,0 +1,65 @@
+export const metadata = { title: "SDK Overview" };
+
+# SDK Overview
+
+The `@monoscope/sdk` package lets you receive real-time alert events from Monoscope in any JavaScript or TypeScript environment.
+
+## Installation
+
+```bash
+npm install @monoscope/sdk
+```
+
+## Requirements
+
+- Node.js 18+ (for built-in `WebSocket` support), **or**
+- Any modern browser
+- An API key from **Settings → Developer**
+
+## Quick example
+
+```typescript
+import { monoscope } from "@monoscope/sdk";
+
+const stop = monoscope("mk_live_...", (event) => {
+  console.log(event.type, event.data);
+});
+
+// Disconnect later
+stop();
+```
+
+## What the SDK does
+
+- Opens a WebSocket connection to the Monoscope server
+- Authenticates with your API key
+- Calls your callback for every event received
+- **Automatically reconnects** if the connection drops
+- Returns a `stop()` function to cleanly disconnect
+
+## Exports
+
+```typescript
+// Main function
+export function monoscope(
+  apiKey: string,
+  onEvent: EventCallback,
+  options?: MonoscopeOptions,
+): StopFn
+
+// Types
+export type {
+  Alert,
+  AlertTrigger,
+  MonoscopeEvent,
+  EventCallback,
+  StopFn,
+  MonoscopeOptions,
+}
+```
+
+## Pages in this section
+
+- [Function Reference](/sdk/reference) — `monoscope()` signature, all options and return types
+- [Events Reference](/sdk/events) — every event type with payload shapes and examples
+- [Examples](/sdk/examples) — Node.js, Discord bot, Telegram bot, Next.js, browser

@@ -1,0 +1,13 @@
+{
+  "name": "@monoscope/eslint-config",
+  "version": "0.0.1",
+  "private": true,
+  "files": [
+    "*.js"
+  ],
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^10.1.0"
+  }
+}

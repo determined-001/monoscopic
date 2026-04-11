@@ -1,0 +1,24 @@
+{
+  "name": "@monoscope/docs",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3002",
+    "build": "next build",
+    "start": "next start --port 3002"
+  },
+  "dependencies": {
+    "@next/mdx": "16.2.2",
+    "@mdx-js/loader": "^3.1.0",
+    "@mdx-js/react": "^3.1.0",
+    "next": "16.2.2",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.5",
+    "typescript": "^6.0.2"
+  }
+}

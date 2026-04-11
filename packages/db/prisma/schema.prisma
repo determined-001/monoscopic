@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model WhaleAlert {
+  id           String   @id @default(cuid())
+  txHash       String   @unique
+  blockNumber  Int
+  timestamp    Int
+  from         String
+  to           String
+  amount       String
+  tokenType    String
+  tokenAddress String?
+  createdAt    DateTime @default(now())
+}
+
+model Block {
+  number        Int      @id
+  hash          String
+  timestamp     Int
+  txCount       Int
+  gasUsed       String
+  gasLimit      String
+  gasUsedPct    Float
+  tps           Int
+  uniqueWallets Int
+  totalFees     String
+  createdAt     DateTime @default(now())
+}
+
+model Alert {
+  id              String         @id @default(cuid())
+  type            String
+  name            String
+  token           String?
+  condition       String
+  threshold       Float
+  enabled         Boolean        @default(true)
+  notifyInApp     Boolean        @default(true)
+  notifyEmail     Boolean        @default(false)
+  notifyTelegram  Boolean        @default(false)
+  notifyDiscord   Boolean        @default(false)
+  discordWebhook  String?
+  createdAt       DateTime       @default(now())
+  triggers        AlertTrigger[]
+}
+
+model AlertTrigger {
+  id        String   @id @default(cuid())
+  alertId   String
+  alert     Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  value     Float
+  txHash    String?
+  createdAt DateTime @default(now())
+
+  @@unique([alertId, txHash])
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  label     String    @default("My App")
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+}
