@@ -8,6 +8,9 @@ dist
 out
 build
 
+# rust / soroban
+target
+
 # turbo
 .turbo
 
