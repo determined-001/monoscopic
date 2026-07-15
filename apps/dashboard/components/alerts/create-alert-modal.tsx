@@ -8,7 +8,7 @@ import { useAlerts, type AlertType, type AlertCondition } from "@/lib/hooks/useA
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type TabType = "Whale" | "Gas";
+type TabType = "Whale";
 
 interface FormState {
   tab: TabType;
@@ -17,9 +17,8 @@ interface FormState {
   whaleAddress: string;
   whaleActions: string[];
   whaleMinValue: string;
-  // Gas
-  gasComparison: string;
-  gasValue: string;
+  /** "native" | "CODE:GISSUER" — the asset this alert watches. */
+  whaleAsset: string;
   // Notifications
   notifyInApp: boolean;
   notifyEmail: boolean;
@@ -34,8 +33,7 @@ const INITIAL_FORM: FormState = {
   whaleAddress: "",
   whaleActions: ["Buy"],
   whaleMinValue: "",
-  gasComparison: "above",
-  gasValue: "",
+  whaleAsset: "native",
   notifyInApp: true,
   notifyEmail: false,
   notifyTelegram: false,
@@ -43,7 +41,7 @@ const INITIAL_FORM: FormState = {
   discordWebhook: "",
 };
 
-const TABS: TabType[] = ["Whale", "Gas"];
+const TABS: TabType[] = ["Whale"];
 
 // ─── Shared field styles ────────────────────────────────────────────────────────
 
@@ -217,45 +215,6 @@ function WhalePanel({ form, set }: { form: FormState; set: SetFn }) {
   );
 }
 
-function GasPanel({ form, set }: { form: FormState; set: SetFn }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Condition">
-          <div className="relative">
-            <select
-              value={form.gasComparison}
-              onChange={(e) => set("gasComparison", e.target.value)}
-              className={SELECT_CLS}
-            >
-              <option value="above">rises above</option>
-              <option value="below">drops below</option>
-            </select>
-            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
-              ▾
-            </span>
-          </div>
-        </Field>
-        <Field label="Gas price">
-          <SuffixInput
-            suffix="Gwei"
-            value={form.gasValue}
-            onChange={(v) => set("gasValue", v)}
-            placeholder="50"
-          />
-        </Field>
-      </div>
-      <p className="text-[12px] text-[var(--text-muted)] bg-[var(--bg-tertiary)] rounded-lg px-3 py-2">
-        Alert when Monad gas{" "}
-        {form.gasComparison === "above" ? "rises above" : "drops below"}{" "}
-        <span className="text-[var(--text-secondary)] font-medium">
-          {form.gasValue || "0"} Gwei
-        </span>
-      </p>
-    </div>
-  );
-}
-
 // ─── SetFn type helper ─────────────────────────────────────────────────────────
 
 type SetFn = <K extends keyof FormState>(key: K, val: FormState[K]) => void;
@@ -310,24 +269,19 @@ export function CreateAlertModal({
     setSaving(true);
     try {
       // Map form tab to alert type and extract threshold
-      const type = form.tab.toLowerCase() as AlertType;
-      let threshold = 0;
-      let condition: AlertCondition = "above";
-      let token: string | undefined;
-
-      if (form.tab === "Whale") {
-        threshold = parseFloat(form.whaleMinValue) || 0;
-        condition = "above";
-        token = form.whaleAddress || undefined;
-      } else if (form.tab === "Gas") {
-        threshold = parseFloat(form.gasValue) || 0;
-        condition = form.gasComparison as AlertCondition;
-      }
+      // Threshold travels as a decimal STRING; the API converts it to stroops
+      // exactly. parseFloat would reintroduce the precision loss stroop math
+      // exists to prevent.
+      const threshold = form.whaleMinValue.trim();
+      const condition: AlertCondition = "above";
+      // An alert must name the asset it watches, including its issuer — a bare
+      // code would let a look-alike asset trigger the real one's threshold.
+      const assetKey = form.whaleAsset.trim() || "native";
 
       await createAlert({
-        type,
+        type: "whale",
         name: form.name,
-        token,
+        assetKey,
         condition,
         threshold,
         notifyInApp:    form.notifyInApp,
@@ -386,7 +340,6 @@ export function CreateAlertModal({
           </div>
           <div className="pt-5">
             {form.tab === "Whale" && <WhalePanel form={form} set={set} />}
-            {form.tab === "Gas" && <GasPanel form={form} set={set} />}
           </div>
         </div>
 

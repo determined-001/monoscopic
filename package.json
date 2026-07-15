@@ -1,7 +1,7 @@
 {
   "name": "monoscope",
   "private": true,
-  "description": "Professional trading infrastructure for Monad",
+  "description": "Real-time whale and flow analytics for the Stellar DEX and Soroban",
   "author": "Ezedike Evan",
   "license": "MIT",
   "engines": {

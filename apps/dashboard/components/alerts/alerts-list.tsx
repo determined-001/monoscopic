@@ -58,19 +58,25 @@ function EditAlertModal({
   onClose,
 }: {
   alert: Alert;
-  onSave: (patch: { name: string; condition: AlertCondition; threshold: number }) => Promise<void>;
+  onSave: (patch: { name: string; condition: AlertCondition; threshold: string }) => Promise<void>;
   onClose: () => void;
 }) {
   const [name, setName] = useState(alert.name);
   const [condition, setCondition] = useState<AlertCondition>(alert.condition);
-  const [threshold, setThreshold] = useState(String(alert.threshold));
+  const [threshold, setThreshold] = useState(stroopsToDisplay(alert.thresholdStroops));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSave() {
-    const parsed = parseFloat(threshold);
+    // Threshold stays a decimal STRING all the way to the API, which converts it
+    // to stroops exactly. parseFloat here would reintroduce the precision loss
+    // the stroop math exists to avoid.
+    const parsed = threshold.trim();
     if (!name.trim()) { setError("Name is required."); return; }
-    if (isNaN(parsed)) { setError("Threshold must be a valid number."); return; }
+    if (!/^\d+(\.\d{1,7})?$/.test(parsed) || Number(parsed) <= 0) {
+      setError("Threshold must be a positive amount with at most 7 decimals.");
+      return;
+    }
     setSaving(true);
     try {
       await onSave({ name: name.trim(), condition, threshold: parsed });
@@ -239,8 +245,8 @@ function AlertCard({
           </div>
 
           <p className="text-[12px] text-[var(--text-secondary)] font-mono mb-2">
-            {alert.token ? `${alert.token} ` : ""}
-            {alert.condition} {alert.threshold}
+            {alert.assetKey ? `${assetLabel(alert.assetKey)} ` : ""}
+            {alert.condition} {stroopsToDisplay(alert.thresholdStroops)}
           </p>
 
           <div className="flex items-center gap-1.5">
@@ -278,6 +284,19 @@ function AlertCard({
 }
 
 // ─── Alerts List ───────────────────────────────────────────────────────────────
+
+/** Stroops (7-decimal fixed point) back to a human decimal for display/editing. */
+function stroopsToDisplay(stroops: string): string {
+  const n = BigInt(stroops);
+  const whole = n / 10_000_000n;
+  const frac = (n % 10_000_000n).toString().padStart(7, "0").replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : whole.toString();
+}
+
+/** "native" -> "XLM"; "USDC:GA..." -> "USDC". */
+function assetLabel(assetKey: string): string {
+  return assetKey === "native" ? "XLM" : (assetKey.split(":")[0] ?? assetKey);
+}
 
 export function AlertsList() {
   const { alerts, loading, error, toggleAlert, updateAlert, deleteAlert } = useAlerts();

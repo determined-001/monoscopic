@@ -12,7 +12,7 @@ const FEATURES = [
   {
     icon: Fish,
     title: "Whale Tracking",
-    description: "Monitor every significant transaction on Monad the moment it lands. Know what the biggest wallets are doing before the crowd reacts.",
+    description: "Watch large payments and DEX trades the moment their ledger closes. Per-asset thresholds, keyed by issuer so a look-alike token cannot trigger the real one's alert.",
   },
   {
     icon: Bell,
@@ -22,7 +22,7 @@ const FEATURES = [
   {
     icon: Zap,
     title: "Sub-Second Data",
-    description: "Powered by Monad's parallel EVM, our pipeline ingests every block in under 200ms. Real-time means real-time.",
+    description: "We stream payments and trades from Horizon over SSE as ledgers close — roughly every 5 seconds, which is Stellar's protocol cadence. The dashboard shows feed staleness, so you can tell live from stalled.",
   },
   {
     icon: Activity,
@@ -32,7 +32,7 @@ const FEATURES = [
   {
     icon: Eye,
     title: "Follow Any Wallet",
-    description: "Add any Monad address to your watchlist. Get a dedicated alert stream for every move they make on-chain.",
+    description: "Register a subscription on-chain in the Soroban registry. The pipeline reads it to know what to watch, and writes an attestation back when your alert fires.",
   },
   {
     icon: Code2,

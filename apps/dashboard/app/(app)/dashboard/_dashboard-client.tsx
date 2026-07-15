@@ -4,6 +4,8 @@ import { Activity, Cpu, Zap, Layers, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { truncateAddress } from "@/lib/utils";
 import { useMonoscopeStore } from "@/lib/store/useMonoscope";
+import type { WhaleAlert } from "@/lib/store/useMonoscope";
+import { useHealth } from "@/lib/hooks/useHealth";
 import { AlertsSummary } from "@/components/alerts/alerts-summary";
 import { QuickActions } from "@/components/dashboard/quick-actions";
 
@@ -48,35 +50,35 @@ function StatCard({
 // ─── Live block stats strip ───────────────────────────────────────────────────
 
 function NetworkStrip() {
-  const latestBlock = useMonoscopeStore((s) => s.latestBlock);
-  const connected   = useMonoscopeStore((s) => s.connected);
+  const health = useHealth();
+  const whaleAlerts = useMonoscopeStore((s) => s.whaleAlerts);
 
-  const pct = latestBlock?.gasUsedPercent ?? null;
-  const gasLabel = pct === null ? "—" : pct < 30 ? "Low" : pct < 70 ? "Moderate" : "High";
-  const gasColor = pct === null ? undefined : pct < 30 ? "green" : pct < 70 ? "amber" : undefined;
-
+  // No gas and no TPS card: Stellar has no gas, and ledgers close on a ~5s
+  // protocol cadence rather than a throughput the network is straining against.
+  // These three are things that are actually true of this chain and this
+  // pipeline, and each traces to /health or the socket.
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <StatCard
         icon={<Layers size={18} />}
-        label="Latest Block"
-        value={latestBlock ? `#${latestBlock.number.toLocaleString()}` : "—"}
-        sub={latestBlock ? `${latestBlock.transactionCount} txns` : connected ? "Syncing…" : "Connecting…"}
-        color="purple"
+        label="Feed"
+        value={health ? (health.feed.live ? "Live" : "Stalled") : "—"}
+        sub={health ? `${health.feed.network} · ${health.feed.lastRecordAgo ?? "no data yet"}` : "Connecting…"}
+        color={health?.feed.live ? "green" : "amber"}
       />
       <StatCard
         icon={<Cpu size={18} />}
-        label="TPS"
-        value={latestBlock ? String(latestBlock.tps) : "—"}
-        sub="transactions / sec"
-        color="green"
+        label="Whale events"
+        value={whaleAlerts.length ? String(whaleAlerts.length) : "—"}
+        sub="this session"
+        color="purple"
       />
       <StatCard
         icon={<Zap size={18} />}
-        label="Gas Load"
-        value={gasLabel}
-        sub={pct !== null ? `${pct.toFixed(1)}% used` : "waiting for block"}
-        color={gasColor ?? "amber"}
+        label="On-chain attestations"
+        value={health?.soroban.triggerCount ?? "—"}
+        sub={health?.soroban.status === "up" ? "Soroban testnet" : "registry unavailable"}
+        color="amber"
       />
     </div>
   );
@@ -84,19 +86,32 @@ function NetworkStrip() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function bigIntToUnits(raw: string, decimals = 18): number {
-  const n = BigInt(raw);
-  const d = BigInt(10) ** BigInt(decimals);
-  return Number(n / d) + Number(n % d) / Number(d);
+/** Stroops are 7-decimal fixed point. The old default of 18 decimals here made
+ *  every amount wrong by 11 orders of magnitude on any non-18-decimal asset. */
+function stroopsToUnits(amountStroops: string): number {
+  return Number(BigInt(amountStroops)) / 10 ** 7;
+}
+
+/** "native" -> "XLM"; "USDC:GA..." -> "USDC". */
+function assetLabel(assetKey: string): string {
+  return assetKey === "native" ? "XLM" : (assetKey.split(":")[0] ?? assetKey);
 }
 
 // ─── Live whale feed ──────────────────────────────────────────────────────────
 
-function WhaleFeedRow({ alert }: { alert: { txHash: string; from: string; to: string; amount: string; timestamp: number; tokenType: string } }) {
-  const seconds = Math.floor(Date.now() / 1000) - alert.timestamp;
+function WhaleFeedRow({ alert }: { alert: WhaleAlert }) {
+  const seconds = Math.floor((Date.now() - new Date(alert.closedAt).getTime()) / 1000);
   const age = seconds < 60 ? `${seconds}s` : seconds < 3600 ? `${Math.floor(seconds / 60)}m` : `${Math.floor(seconds / 3600)}h`;
-  const mon = bigIntToUnits(alert.amount);
-  const formatted = mon >= 1_000_000 ? `${(mon / 1_000_000).toFixed(2)}M` : mon >= 1_000 ? `${(mon / 1_000).toFixed(1)}K` : mon.toFixed(2);
+  const units = stroopsToUnits(alert.amountStroops);
+  const formatted = units >= 1_000_000 ? `${(units / 1_000_000).toFixed(2)}M` : units >= 1_000 ? `${(units / 1_000).toFixed(1)}K` : units.toFixed(2);
+
+  // The feed reads mainnet, so explorer links must point at mainnet. The old
+  // code linked whale rows to a testnet explorer while the listener ran against
+  // mainnet — every link 404'd.
+  const explorer =
+    alert.network === "public"
+      ? "https://stellar.expert/explorer/public"
+      : "https://stellar.expert/explorer/testnet";
 
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-[var(--border-default)] last:border-0">
@@ -108,18 +123,23 @@ function WhaleFeedRow({ alert }: { alert: { txHash: string; from: string; to: st
         <p className="text-[11px] text-[var(--text-muted)] truncate">→ {truncateAddress(alert.to)}</p>
       </div>
       <div className="flex flex-col items-end gap-0.5 shrink-0">
-        <p className="font-mono text-[13px] font-semibold text-purple-400">{formatted} MON</p>
+        <p className="font-mono text-[13px] font-semibold text-purple-400">{formatted} {assetLabel(alert.assetKey)}</p>
         <p className="text-[10px] text-[var(--text-muted)]">{age} ago</p>
       </div>
-      <a
-        href={`https://testnet.monadexplorer.com/tx/${alert.txHash}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-150"
-        aria-label="View on explorer"
-      >
-        <ExternalLink size={13} />
-      </a>
+      {/* Trades carry no transaction hash, so there is nothing to link to. */}
+      {alert.txHash ? (
+        <a
+          href={`${explorer}/tx/${alert.txHash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-150"
+          aria-label="View on stellar.expert"
+        >
+          <ExternalLink size={13} />
+        </a>
+      ) : (
+        <span className="w-[13px]" aria-hidden="true" />
+      )}
     </div>
   );
 }
@@ -155,7 +175,7 @@ function LiveWhaleFeed() {
       ) : (
         <div>
           {recent.map((alert) => (
-            <WhaleFeedRow key={alert.txHash} alert={alert} />
+            <WhaleFeedRow key={alert.opId} alert={alert} />
           ))}
         </div>
       )}

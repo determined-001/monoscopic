@@ -8,12 +8,12 @@ export type BadgeVariant =
   | "negative" // red — price down, loss, sell
   | "neutral" // purple — default, volume, transfer
   | "warning" // amber — gas alerts, caution states
-  | "network" // green pulsing dot + text — Monad Mainnet indicator
+  | "network" // green pulsing dot + text — network indicator
   | "tag"; // bg-tertiary bg — whale labels, token categories
 
 export interface BadgeProps {
   variant?: BadgeVariant;
-  /** Label text. For 'network' variant this is the network name (e.g. "Monad Mainnet"). */
+  /** Label text. For 'network' variant this is the network name (e.g. "Stellar Mainnet"). */
   children: ReactNode;
   className?: string;
 }

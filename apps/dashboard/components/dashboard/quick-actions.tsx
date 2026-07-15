@@ -2,7 +2,7 @@
 
 import { ArrowLeftRight, Link2, ArrowUpRight, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMonoscopeStore } from "@/lib/store/useMonoscope";
+import { useHealth } from "@/lib/hooks/useHealth";
 
 // ─── Action data ──────────────────────────────────────────────────────────────
 
@@ -14,23 +14,14 @@ const ACTIONS: { label: string; Icon: React.FC<{ size?: number; className?: stri
   { label: "Stake",  Icon: Layers,         href: null },
 ];
 
-// ─── Gas tracker (live) ───────────────────────────────────────────────────────
+// ─── Network tracker (live) ───────────────────────────────────────────────────
 
-function GasTracker() {
-  const latestBlock = useMonoscopeStore((s) => s.latestBlock);
-
-  const pct    = latestBlock?.gasUsedPercent ?? null;
-  const tps    = latestBlock?.tps            ?? null;
-
-  const loadLabel = pct === null ? "—"
-    : pct < 30 ? "Low"
-    : pct < 70 ? "Moderate"
-    : "High";
-
-  const loadColor = pct === null ? "text-[var(--text-muted)]"
-    : pct < 30 ? "text-chart-positive"
-    : pct < 70 ? "text-amber-400"
-    : "text-chart-negative";
+function NetworkTracker() {
+  // Stellar has no gas and no TPS-under-load: ledgers close on a ~5s protocol
+  // cadence. What is worth surfacing instead is whether our feed is actually
+  // alive and what the on-chain registry says — both traced to /health.
+  const health = useHealth();
+  const live = health?.feed.live ?? false;
 
   return (
     <div className={cn(
@@ -39,7 +30,7 @@ function GasTracker() {
     )}>
       <div className="flex items-center justify-between mb-4">
         <p className="text-[13px] font-semibold text-[var(--text-primary)]">Network</p>
-        {latestBlock ? (
+        {live ? (
           <span className="flex items-center gap-1.5 text-[11px] font-medium text-chart-positive">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-chart-positive opacity-70" />
@@ -48,33 +39,33 @@ function GasTracker() {
             Live
           </span>
         ) : (
-          <span className="text-[11px] text-[var(--text-muted)]">Connecting…</span>
+          <span className="text-[11px] text-[var(--text-muted)]">
+            {health ? "Stalled" : "Connecting…"}
+          </span>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <div className="flex flex-col items-center rounded-[10px] bg-[var(--bg-tertiary)] px-3 py-3 gap-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Gas Load</p>
-          <p className={cn("font-mono text-[15px] font-bold leading-none", loadColor)}>
-            {loadLabel}
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Last ledger</p>
+          <p className="font-mono text-[15px] font-bold leading-none text-[var(--text-primary)]">
+            {health?.feed.lastRecordAgo ?? "—"}
           </p>
-          {pct !== null && (
-            <p className="text-[10px] text-[var(--text-muted)]">{pct.toFixed(1)}% used</p>
-          )}
+          <p className="text-[10px] text-[var(--text-muted)]">via Horizon</p>
         </div>
 
         <div className="flex flex-col items-center rounded-[10px] bg-[var(--bg-tertiary)] px-3 py-3 gap-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">TPS</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Attestations</p>
           <p className="font-mono text-[15px] font-bold leading-none text-[var(--text-primary)]">
-            {tps !== null ? tps : "—"}
+            {health?.soroban.triggerCount ?? "—"}
           </p>
-          <p className="text-[10px] text-[var(--text-muted)]">tx/sec</p>
+          <p className="text-[10px] text-[var(--text-muted)]">on-chain</p>
         </div>
       </div>
 
-      {latestBlock && (
+      {health && (
         <p className="mt-3 text-center text-[10px] text-[var(--text-muted)]">
-          Block #{latestBlock.number.toLocaleString()} · Monad Mainnet
+          Feed: {health.feed.network} · Attestations: Stellar Testnet
         </p>
       )}
     </div>
@@ -133,7 +124,7 @@ export function QuickActions() {
       </div>
 
       {/* Live network stats */}
-      <GasTracker />
+      <NetworkTracker />
     </div>
   );
 }

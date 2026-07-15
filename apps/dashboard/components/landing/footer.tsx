@@ -59,9 +59,9 @@ function TelegramIcon({ size = 20 }: { size?: number }) {
   );
 }
 
-// ─── Monad icon (simple hexagon shape) ────────────────────────────────────────
+// ─── Stellar icon ─────────────────────────────────────────────────────────────
 
-function MonadIcon({ size = 16 }: { size?: number }) {
+function StellarIcon({ size = 16 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -167,7 +167,7 @@ function FooterLink({
  *
  * Layout: 4-column grid on desktop, single-column on mobile.
  * Columns: Brand | Product | Resources | Legal
- * Bottom bar: copyright left, "Built on Monad" right.
+ * Bottom bar: copyright left, "Built on Stellar" right.
  */
 export function Footer() {
   const year = new Date().getFullYear();
@@ -232,7 +232,7 @@ export function Footer() {
 
             {/* One-liner */}
             <p className="text-[14px] text-[#6B6780] leading-relaxed max-w-[220px]">
-              On-chain intelligence for the Monad ecosystem.
+              Real-time whale and flow analytics for Stellar.
             </p>
 
             {/* Social icons */}
@@ -308,11 +308,11 @@ export function Footer() {
             &copy; {year} Monoscope. All rights reserved.
           </p>
 
-          {/* Built on Monad */}
+          {/* Built on Stellar */}
           <div className="flex items-center gap-1.5">
             <span className="text-[13px] text-[#5E5A72]">Built on</span>
-            <MonadIcon size={16} />
-            <span className="text-[13px] font-medium text-white/60">Monad</span>
+            <StellarIcon size={16} />
+            <span className="text-[13px] font-medium text-white/60">Stellar</span>
           </div>
         </div>
       </div>

@@ -110,31 +110,33 @@ function StatCard({
 
 // ─── Whale Stats ──────────────────────────────────────────────────────────────
 
-function toUnits(amount: string): number {
-  const bn = BigInt(amount);
-  const divisor = BigInt(10) ** 18n;
-  return Number(bn / divisor) + Number(bn % divisor) / 1e18;
+/** Stroops are 7-decimal fixed point, not 18. Display only — comparisons use
+ *  the exact stroop bigint. */
+function toUnits(amountStroops: string): number {
+  return Number(BigInt(amountStroops)) / 10 ** 7;
 }
 
 export function WhaleStats() {
   const whaleAlerts = useMonoscopeStore((s) => s.whaleAlerts);
 
-  const now = Math.floor(Date.now() / 1000);
-  const last24h = whaleAlerts.filter((a) => now - a.timestamp < 86_400);
+  const now = Date.now();
+  const last24h = whaleAlerts.filter(
+    (a) => now - new Date(a.closedAt).getTime() < 86_400_000,
+  );
 
   const uniqueWallets = new Set(whaleAlerts.map((a) => a.from)).size;
 
-  const totalMon = last24h
-    .filter((a) => a.tokenType === "native")
-    .reduce((acc, a) => acc + toUnits(a.amount), 0);
+  const totalXlm = last24h
+    .filter((a) => a.assetKey === "native")
+    .reduce((acc, a) => acc + toUnits(a.amountStroops), 0);
 
   const topAlert = [...last24h].sort(
-    (a, b) => toUnits(b.amount) - toUnits(a.amount),
+    (a, b) => toUnits(b.amountStroops) - toUnits(a.amountStroops),
   )[0];
 
   const topAmount = topAlert
     ? (() => {
-        const raw = toUnits(topAlert.amount);
+        const raw = toUnits(topAlert.amountStroops);
         return raw >= 1_000_000
           ? `${(raw / 1_000_000).toFixed(1)}M`
           : raw >= 1_000
@@ -143,10 +145,15 @@ export function WhaleStats() {
       })()
     : "—";
 
-  const topSymbol = topAlert?.tokenType === "native" ? "MON" : "ERC20";
+  const topSymbol =
+    topAlert?.assetKey === "native"
+      ? "XLM"
+      : (topAlert?.assetKey.split(":")[0] ?? "—");
 
   // Use actual transfer amounts (in units) for the sparkline — last 7 events
-  const sparkData = last24h.slice(-7).map((a) => ({ v: toUnits(a.amount) }));
+  const sparkData = last24h
+    .slice(-7)
+    .map((a) => ({ v: toUnits(a.amountStroops) }));
 
   return (
     <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
@@ -172,16 +179,16 @@ export function WhaleStats() {
         }
       />
       <StatCard
-        label="Net MON Flow"
+        label="Net XLM Flow"
         value={
-          totalMon >= 1_000_000
-            ? `${(totalMon / 1_000_000).toFixed(2)}M`
-            : totalMon >= 1_000
-              ? `${(totalMon / 1_000).toFixed(0)}K`
-              : totalMon.toFixed(0)
+          totalXlm >= 1_000_000
+            ? `${(totalXlm / 1_000_000).toFixed(2)}M`
+            : totalXlm >= 1_000
+              ? `${(totalXlm / 1_000).toFixed(0)}K`
+              : totalXlm.toFixed(0)
         }
         sub="native transfers 24h"
-        subPositive={totalMon > 0}
+        subPositive={totalXlm > 0}
         right={
           <MiniSparkline
             color="#22C55E"

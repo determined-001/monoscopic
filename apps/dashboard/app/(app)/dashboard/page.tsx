@@ -4,7 +4,7 @@ import { DashboardClient } from "./_dashboard-client";
 export const metadata: Metadata = {
   title: "Dashboard",
   description:
-    "Live whale activity and network stats on Monad.",
+    "Live whale activity on the Stellar network.",
 };
 
 export default function DashboardPage() {

@@ -22,7 +22,7 @@ export function AboutSection() {
             Monoscope
           </p>
           <p className="text-[12px] text-[var(--text-muted)]">
-            Version 1.0.0 · Built on Monad
+            Version 1.0.0 · Built on Stellar
           </p>
         </div>
       </div>
@@ -62,7 +62,7 @@ export function AboutSection() {
 
       {/* Footer */}
       <p className="text-[12px] text-[var(--text-muted)] text-center pt-2">
-        Made with <span className="text-chart-negative">♥</span> on Monad
+        Made with <span className="text-chart-negative">♥</span> on Stellar
       </p>
     </div>
   );

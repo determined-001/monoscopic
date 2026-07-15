@@ -22,10 +22,11 @@ interface WhaleTx {
   token: { symbol: string; color: string; amount: string };
   value: string;
   rawUnits: number;
-  txHash: string;
+  /** Null for trades — Horizon trade records carry no transaction hash. */
+  txHash: string | null;
   fromAddress: string;
   toAddress: string;
-  blockNumber: number;
+  ledger: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -39,51 +40,53 @@ function timeAgo(timestamp: number): { label: string; hoursAgo: number } {
   return { label: `${hoursAgo.toFixed(1)}h ago`, hoursAgo };
 }
 
-const VALID_TOKEN_TYPES = ["native", "erc20"] as const;
-type ValidTokenType = (typeof VALID_TOKEN_TYPES)[number];
+/** Stroops are 7-decimal fixed point, not 18. The EVM version hardcoded 10^18
+ *  here, which made every non-18-decimal amount wrong by orders of magnitude. */
+const STROOPS_PER_XLM = 10 ** 7;
 
-function isValidTokenType(t: string): t is ValidTokenType {
-  return (VALID_TOKEN_TYPES as readonly string[]).includes(t);
+/** Display-only. Comparisons use amountStroops (exact); this is for rendering. */
+function stroopsToUnits(amountStroops: string): number {
+  return Number(BigInt(amountStroops)) / STROOPS_PER_XLM;
 }
 
-function bigIntToUnits(amount: string): number {
-  const bn = BigInt(amount);
-  const divisor = BigInt(10) ** 18n;
-  return Number(bn / divisor) + Number(bn % divisor) / 1e18;
-}
-
-function formatAmount(amount: string): string {
-  const raw = bigIntToUnits(amount);
+function formatAmount(amountStroops: string): string {
+  const raw = stroopsToUnits(amountStroops);
   if (raw >= 1_000_000) return `${(raw / 1_000_000).toFixed(2)}M`;
   if (raw >= 1_000) return `${(raw / 1_000).toFixed(0)}K`;
   return raw.toFixed(2);
 }
 
+/** "native" -> "XLM"; "USDC:GA..." -> "USDC". */
+function assetLabel(assetKey: string): string {
+  return assetKey === "native" ? "XLM" : (assetKey.split(":")[0] ?? assetKey);
+}
+
 function alertToTx(alert: WhaleAlert): WhaleTx {
-  const { label, hoursAgo } = timeAgo(alert.timestamp);
-  const tokenType: ValidTokenType = isValidTokenType(alert.tokenType)
-    ? alert.tokenType
-    : "erc20";
-  const isNative = tokenType === "native";
+  const { label, hoursAgo } = timeAgo(
+    Math.floor(new Date(alert.closedAt).getTime() / 1000),
+  );
+  const isNative = alert.assetKey === "native";
 
   return {
-    id: alert.txHash,
+    // opId, not txHash: a transaction carries up to 100 operations, and trades
+    // have no txHash at all, so txHash is not a usable React key.
+    id: alert.opId,
     time: label,
     hoursAgo,
     whale: { address: alert.from },
-    action: isNative ? "TRANSFER" : "CONTRACT",
+    action: alert.kind === "trade" ? "CONTRACT" : "TRANSFER",
     token: {
-      symbol: isNative ? "MON" : (alert.tokenAddress?.slice(0, 6) ?? "ERC20"),
+      symbol: assetLabel(alert.assetKey),
       color: isNative ? "#836EF9" : "#38BDF8",
-      amount: formatAmount(alert.amount),
+      amount: formatAmount(alert.amountStroops),
     },
-    value: formatAmount(alert.amount),
-    // Store raw units for filter comparisons
-    rawUnits: bigIntToUnits(alert.amount),
+    value: formatAmount(alert.amountStroops),
+    // Raw units for filter comparisons.
+    rawUnits: stroopsToUnits(alert.amountStroops),
     txHash: alert.txHash,
     fromAddress: alert.from,
     toAddress: alert.to,
-    blockNumber: alert.blockNumber,
+    ledger: alert.ledger,
   };
 }
 
@@ -175,8 +178,8 @@ function ExpandPanel({ tx }: { tx: WhaleTx }) {
         {[
           { label: "Tx Hash", value: tx.txHash, mono: true, truncate: true },
           {
-            label: "Block",
-            value: `#${tx.blockNumber.toLocaleString()}`,
+            label: "Ledger",
+            value: `#${tx.ledger.toLocaleString()}`,
             mono: true,
           },
           { label: "From", value: tx.fromAddress, mono: true, truncate: true },

@@ -149,7 +149,7 @@ async function persist(c: WhaleCandidate): Promise<boolean> {
         opId: c.opId,
         txHash: c.txHash,
         pagingToken: c.pagingToken,
-        ledger: c.ledger ?? 0,
+        ledger: c.ledger,
         closedAt: c.closedAt,
         from: c.from,
         to: c.to,
@@ -243,6 +243,7 @@ stream.on("record", (record: any) => {
         assetKey: c.assetKey,
         amountStroops: c.amountStroops.toString(),
         amount: fromStroops(c.amountStroops),
+        ledger: c.ledger,
         closedAt: c.closedAt,
         network: c.network,
       });
