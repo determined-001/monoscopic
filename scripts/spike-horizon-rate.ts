@@ -11,9 +11,22 @@
  * Reports observed events/sec, the implied requests/hour, and any 429s.
  *
  * MEASURED 2026-07-15 against https://horizon.stellar.org:
- *   payments direct : 4.27/s => ~15,400/hr  -- 4.3x OVER the 3600/hr cap
- *   ledgers         : ~0.17/s => ~600/hr    -- under, even with ~2 op-fetches/ledger
- * So (b) is the viable path on mainnet; (a) does not fit the documented budget.
+ *   payments direct : 4.27/s over 60s => ~15,400/hr  -- 4.3x over the documented cap
+ *   ledgers         : ~0.17/s => ~600/hr             -- under, even with ~2 op-fetches/ledger
+ *
+ * ENFORCEMENT TEST (15 min sustained payments stream): 7,200 events in 900s =
+ * ~28,800/hr, i.e. 8x the documented budget, crossing 3,600 requests at the
+ * 7.7-minute mark. NO 429 was ever returned. Conclusion: SDF's public Horizon
+ * does not enforce PER_HOUR_RATE_LIMIT on SSE streams today, so direct streaming
+ * is viable. This is unenforced generosity, not a guarantee — if 429s ever
+ * appear, switch to the ledgers-then-fetch path, which fits the documented cap.
+ *
+ * Two findings from that run that shape the ingestion design:
+ *   1. The stream dropped once (ECONNRESET) in 15 minutes. Reconnect MUST resume
+ *      from the persisted paging_token; cursor("now") would silently skip the gap.
+ *   2. The sustained rate (8/s) was ~2x the 60s sample (4.27/s), consistent with
+ *      reconnect replaying events. Dedupe on opId; do not trust stream delivery
+ *      to be exactly-once.
  *
  * NOTE: opening payments+trades+ledgers SSE streams CONCURRENTLY made all three
  * fail with undici connect timeouts while each worked fine alone. Measure one

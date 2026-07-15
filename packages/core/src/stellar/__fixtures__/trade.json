@@ -1,0 +1,35 @@
+{
+  "_links": {
+    "self": {
+      "href": ""
+    },
+    "base": {
+      "href": "https://horizon.stellar.org/liquidity_pools/f06fd1d1bc25a70847f9b96cf49c42e5c437c8d2e82667527479bf460fba0e0f"
+    },
+    "counter": {
+      "href": "https://horizon.stellar.org/accounts/GC43BZH24ZLMQLM4EOGT2L2EUNGN74AG77WVBPDFWEP23XOY3AZ2TRXH"
+    },
+    "operation": {
+      "href": "https://horizon.stellar.org/operations/272658250666237961"
+    }
+  },
+  "id": "272658250666237961-0",
+  "paging_token": "272658250666237961-0",
+  "ledger_close_time": "2026-07-15T05:02:03Z",
+  "trade_type": "liquidity_pool",
+  "liquidity_pool_fee_bp": 30,
+  "base_liquidity_pool_id": "f06fd1d1bc25a70847f9b96cf49c42e5c437c8d2e82667527479bf460fba0e0f",
+  "base_amount": "29169828.0998436",
+  "base_asset_type": "credit_alphanum4",
+  "base_asset_code": "NABU",
+  "base_asset_issuer": "GCYVCYS772DF2GJ376O4UQPRUD2GDS5NKY3DMW7L5R62PLR5WWNF7QFB",
+  "counter_offer_id": "4884344269093625865",
+  "counter_account": "GC43BZH24ZLMQLM4EOGT2L2EUNGN74AG77WVBPDFWEP23XOY3AZ2TRXH",
+  "counter_amount": "0.0003681",
+  "counter_asset_type": "native",
+  "base_is_seller": true,
+  "price": {
+    "n": "3681",
+    "d": "291698280998436"
+  }
+}
