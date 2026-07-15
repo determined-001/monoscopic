@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { MemoryCursorStore } from "./cursorStore.js";
-import trade from "./__fixtures__/trade.json" with { type: "json" };
-import paymentNative from "./__fixtures__/payment-native.json" with { type: "json" };
+import trade from "./__fixtures__/trade.json";
+import paymentNative from "./__fixtures__/payment-native.json";
 
 describe("MemoryCursorStore", () => {
   it("returns null for an unknown stream (cold start)", async () => {

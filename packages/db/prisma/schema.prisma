@@ -2,64 +2,132 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Postgres, not SQLite. The old schema hardcoded `url = "file:./dev.db"` as a
+// literal (not env()), and Render's disk is ephemeral — so the database was
+// already being wiped on every deploy, restart, and cold start. A reviewer
+// arriving after a spin-down saw an empty feed.
+//
+// Neon rather than Render's own free Postgres: the latter expires 30 days after
+// creation, then a 14-day grace, then deletion, with no backups — a landmine
+// timed for exactly the wave window.
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-model WhaleAlert {
-  id           String   @id @default(cuid())
-  txHash       String   @unique
-  blockNumber  Int
-  timestamp    Int
-  from         String
-  to           String
-  amount       String
-  tokenType    String
-  tokenAddress String?
-  createdAt    DateTime @default(now())
+/// A closed Stellar ledger. Replaces the EVM `Block`: no gas, no gas limit, and
+/// no TPS-derived-from-block-time — Stellar closes on a ~5s cadence by protocol.
+model Ledger {
+  sequence          Int      @id
+  hash              String
+  closedAt          DateTime
+  txCount           Int
+  opCount           Int
+  successfulTxCount Int
+  totalFeesStroops  String
+  protocolVersion   Int
+  createdAt         DateTime @default(now())
+
+  @@index([closedAt])
 }
 
-model Block {
-  number        Int      @id
-  hash          String
-  timestamp     Int
-  txCount       Int
-  gasUsed       String
-  gasLimit      String
-  gasUsedPct    Float
-  tps           Int
-  uniqueWallets Int
-  totalFees     String
+/// A balance movement large enough to be a whale event.
+///
+/// Keyed on the Horizon OPERATION id, not the transaction hash. The old schema's
+/// `WhaleAlert.txHash @unique` silently dropped events: one Stellar transaction
+/// can carry up to 100 operations, and a single path payment or trade moves
+/// value on two legs. Multi-leg operations get suffixed keys (:send/:recv,
+/// :base/:counter), so opId is unique where txHash never was.
+///
+/// The unique constraint is also the dedupe: Horizon SSE delivery is not
+/// exactly-once (a measured run replayed after reconnect), so a re-delivered
+/// record must not create a second event.
+model WhaleEvent {
+  id            String   @id @default(cuid())
+  kind          String
+  opId          String   @unique
+  /// Nullable: Horizon trade records genuinely carry no transaction hash.
+  txHash        String?
+  pagingToken   String
+  ledger        Int
+  closedAt      DateTime
+  from          String
+  to            String
+  /// "native" | "CODE:GISSUER". The issuer is part of the identity: asset codes
+  /// are not unique, so a look-alike "USDC" must not match the real one.
+  assetKey      String
+  /// Stroops (7-decimal fixed point) as a decimal string. Never a float — the
+  /// max Stellar amount is 9223372036854775807 stroops, far beyond 2^53.
+  amountStroops String
+  /// "testnet" | "public" — structural, so the network is labelled wherever the
+  /// event surfaces rather than assumed.
+  network       String
+  /// The attestation transaction this event produced on-chain, if any.
+  onchainTxHash String?
   createdAt     DateTime @default(now())
+
+  @@index([closedAt])
+  @@index([assetKey, closedAt])
+  @@index([txHash])
+  @@index([from])
+  @@index([to])
+  @@index([network, closedAt])
 }
 
+/// Resume point per Horizon stream. Tokens are opaque — trade tokens are
+/// composite ("272658250666237961-0") and Number() on them is NaN — so this is
+/// deliberately a String column, never numeric.
+///
+/// Without this, reconnecting at cursor("now") silently drops every event
+/// between a drop and the reopen while the UI still claims to be live.
+model StreamCursor {
+  stream      String   @id
+  pagingToken String
+  updatedAt   DateTime @updatedAt
+}
+
+/// A user's alert configuration.
+///
+/// Gas alerts are gone: Stellar has no gas. That also closes a dedupe hole —
+/// gas triggers passed no txHash, and Postgres treats NULLs as distinct in a
+/// unique index, so they could never be deduplicated.
 model Alert {
-  id              String         @id @default(cuid())
-  type            String
-  name            String
-  token           String?
-  condition       String
-  threshold       Float
-  enabled         Boolean        @default(true)
-  notifyInApp     Boolean        @default(true)
-  notifyEmail     Boolean        @default(false)
-  notifyTelegram  Boolean        @default(false)
-  notifyDiscord   Boolean        @default(false)
-  discordWebhook  String?
-  createdAt       DateTime       @default(now())
-  triggers        AlertTrigger[]
+  id               String         @id @default(cuid())
+  type             String         @default("whale")
+  name             String
+  /// AssetKey to watch: "native" | "CODE:GISSUER".
+  assetKey         String?
+  condition        String
+  /// Threshold in stroops as a decimal string. The EVM version stored a Float
+  /// and compared it against an amount converted with a hardcoded 18 decimals,
+  /// so 6-decimal assets could never fire.
+  thresholdStroops String
+  enabled          Boolean        @default(true)
+  notifyInApp      Boolean        @default(true)
+  notifyEmail      Boolean        @default(false)
+  notifyTelegram   Boolean        @default(false)
+  notifyDiscord    Boolean        @default(false)
+  discordWebhook   String?
+  createdAt        DateTime       @default(now())
+  triggers         AlertTrigger[]
+
+  @@index([enabled, assetKey])
 }
 
 model AlertTrigger {
-  id        String   @id @default(cuid())
-  alertId   String
-  alert     Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
-  value     Float
-  txHash    String?
-  createdAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  alertId       String
+  alert         Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  /// Stroops as a decimal string, matching WhaleEvent.amountStroops.
+  valueStroops  String
+  /// The operation that fired this trigger. Non-null, unlike the old nullable
+  /// txHash, so the unique constraint below actually constrains.
+  opId          String
+  onchainTxHash String?
+  createdAt     DateTime @default(now())
 
-  @@unique([alertId, txHash])
+  @@unique([alertId, opId])
+  @@index([alertId, createdAt])
 }
 
 model ApiKey {

@@ -9,8 +9,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-
-export type StellarNetwork = "testnet" | "public";
+import type { StellarNetwork } from "./ledgerProcessor.js";
 
 export interface Deployment {
   network: string;

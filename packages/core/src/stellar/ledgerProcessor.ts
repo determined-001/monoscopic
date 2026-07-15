@@ -23,6 +23,8 @@ export interface WhaleCandidate {
   pagingToken: string;
   /** Null for trades — Horizon trade records do not carry a transaction hash. */
   txHash: string | null;
+  /** Derived from the operation id; see ledgerFromToid. */
+  ledger: number;
   closedAt: Date;
   from: string;
   to: string;
@@ -76,6 +78,25 @@ interface TradeRecord {
   base_is_seller?: boolean;
 }
 
+/**
+ * Recover the ledger sequence from a Horizon operation or trade id.
+ *
+ * Horizon operation records do NOT carry a ledger field. The id is a TOID
+ * (Total Order ID): `ledger_sequence << 32 | tx_order << 12 | op_order`, so the
+ * sequence is the high 32 bits. Trade ids are the operation TOID with a leg
+ * suffix ("...961-0"), so the suffix is dropped first.
+ *
+ * Verified against live Horizon: op 272658250666172417 >> 32 = 63483196, and
+ * Horizon independently reports that transaction in ledger 63483196.
+ */
+export function ledgerFromToid(id: string): number {
+  const head = id.split("-")[0]!;
+  if (!/^\d+$/.test(head)) {
+    throw new Error(`not a TOID: ${JSON.stringify(id)}`);
+  }
+  return Number(BigInt(head) >> 32n);
+}
+
 export class LedgerProcessor extends EventEmitter {
   constructor(private readonly network: StellarNetwork) {
     super();
@@ -111,6 +132,7 @@ export class LedgerProcessor extends EventEmitter {
       opId: op.id,
       pagingToken: op.paging_token,
       txHash: op.transaction_hash ?? null,
+      ledger: ledgerFromToid(op.id),
       closedAt: new Date(op.created_at),
       network: this.network,
     };
@@ -216,6 +238,7 @@ export class LedgerProcessor extends EventEmitter {
       opId: `${t.id}:base`,
       pagingToken: t.paging_token,
       txHash: null,
+      ledger: ledgerFromToid(t.id),
       closedAt,
       from: baseIsSeller ? baseParty : counterParty,
       to: baseIsSeller ? counterParty : baseParty,
@@ -233,6 +256,7 @@ export class LedgerProcessor extends EventEmitter {
       opId: `${t.id}:counter`,
       pagingToken: t.paging_token,
       txHash: null,
+      ledger: ledgerFromToid(t.id),
       closedAt,
       from: baseIsSeller ? counterParty : baseParty,
       to: baseIsSeller ? baseParty : counterParty,

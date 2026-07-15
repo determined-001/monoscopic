@@ -1,18 +1,44 @@
 import { describe, it, expect } from "vitest";
-import { LedgerProcessor } from "./ledgerProcessor.js";
+import { LedgerProcessor, ledgerFromToid } from "./ledgerProcessor.js";
 import { toStroops } from "./amount.js";
 
 // Real Horizon records, captured from https://horizon.stellar.org on 2026-07-15
 // by scripts/capture-fixtures.ts. Hand-written approximations would not exercise
 // the details these tests exist to pin (decimal strings, path payment
 // source-vs-dest, failed transactions, liquidity-pool trades).
-import paymentNative from "./__fixtures__/payment-native.json" with { type: "json" };
-import paymentIssued from "./__fixtures__/payment-issued.json" with { type: "json" };
-import pathPayment from "./__fixtures__/path-payment.json" with { type: "json" };
-import operationFailed from "./__fixtures__/operation-failed.json" with { type: "json" };
-import trade from "./__fixtures__/trade.json" with { type: "json" };
+import paymentNative from "./__fixtures__/payment-native.json";
+import paymentIssued from "./__fixtures__/payment-issued.json";
+import pathPayment from "./__fixtures__/path-payment.json";
+import operationFailed from "./__fixtures__/operation-failed.json";
+import trade from "./__fixtures__/trade.json";
 
 const proc = new LedgerProcessor("public");
+
+describe("ledgerFromToid", () => {
+  it("recovers the ledger sequence Horizon reports for the same operation", () => {
+    // Ground truth: Horizon says tx 67906ed8... (which contains op
+    // 272658250666172417) is in ledger 63483196. Horizon does NOT put a ledger
+    // field on operation records, so this derivation is the only way to get it
+    // without a second HTTP round trip per operation.
+    expect(paymentNative.id).toBe("272658250666172417");
+    expect(ledgerFromToid(paymentNative.id)).toBe(63483196);
+  });
+
+  it("strips the leg suffix on trade ids", () => {
+    expect(trade.id).toBe("272658250666237961-0");
+    expect(ledgerFromToid(trade.id)).toBe(63483196);
+  });
+
+  it("rejects a non-TOID rather than returning a plausible number", () => {
+    expect(() => ledgerFromToid("abc")).toThrow(/not a TOID/);
+    expect(() => ledgerFromToid("")).toThrow(/not a TOID/);
+  });
+
+  it("populates ledger on emitted candidates", () => {
+    const [c] = proc.processOperation(paymentNative as never);
+    expect(c!.ledger).toBe(63483196);
+  });
+});
 
 describe("processOperation — failed transactions", () => {
   it("IGNORES an operation from a failed transaction", () => {
@@ -126,8 +152,9 @@ describe("processTrade", () => {
 
   it("represents a liquidity pool counterparty as pool:<id>", () => {
     // trade_type "liquidity_pool" has NO base_account — only a pool id. Assuming
-    // an account field exists would produce undefined parties.
-    expect(trade.base_account).toBeUndefined();
+    // an account field exists would produce undefined parties. (The cast is the
+    // point: TS proves the field is absent from the real captured record.)
+    expect((trade as Record<string, unknown>).base_account).toBeUndefined();
     const out = proc.processTrade(trade as never);
     const party = trade.base_is_seller ? out[0]!.from : out[0]!.to;
     expect(party).toBe(`pool:${trade.base_liquidity_pool_id}`);

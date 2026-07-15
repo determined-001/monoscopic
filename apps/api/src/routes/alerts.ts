@@ -1,11 +1,31 @@
 import { Router } from "express";
 import { prisma } from "@monoscope/db";
-import type { AlertType, AlertCondition } from "@monoscope/types";
+import { toStroops } from "@monoscope/core";
+import type { AlertCondition } from "@monoscope/types";
 
-const VALID_TYPES: AlertType[] = ["whale", "gas"];
 const VALID_CONDITIONS: AlertCondition[] = ["above", "below", "crosses", "drops"];
 
 const router: Router = Router();
+
+/**
+ * Parse a human decimal threshold ("1000", "1000.5") into stroops.
+ *
+ * Deliberately NOT parseFloat, which the EVM version used: thresholds are
+ * compared against amounts up to 9223372036854775807 stroops, well past the
+ * exact-integer range of a double. toStroops also rejects more than 7 decimal
+ * places rather than silently truncating precision Stellar cannot represent.
+ */
+function parseThreshold(
+  v: unknown,
+): { ok: true; stroops: string } | { ok: false; error: string } {
+  try {
+    const stroops = toStroops(String(v));
+    if (stroops <= 0n) return { ok: false, error: "threshold must be positive" };
+    return { ok: true, stroops: stroops.toString() };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
 
 // GET /alerts
 router.get("/", async (_req, res) => {
@@ -18,24 +38,33 @@ router.get("/", async (_req, res) => {
 
 // POST /alerts
 router.post("/", async (req, res) => {
-  const { type, name, token, condition, threshold } = req.body;
+  const { name, assetKey, condition, threshold } = req.body;
 
-  if (!type || !name || !condition || threshold === undefined) {
-    res.status(400).json({ error: "type, name, condition, threshold are required" });
-    return;
-  }
-  if (!VALID_TYPES.includes(type)) {
-    res.status(400).json({ error: `type must be one of: ${VALID_TYPES.join(", ")}` });
+  if (!name || !assetKey || !condition || threshold === undefined) {
+    res
+      .status(400)
+      .json({ error: "name, assetKey, condition, threshold are required" });
     return;
   }
   if (!VALID_CONDITIONS.includes(condition)) {
-    res.status(400).json({ error: `condition must be one of: ${VALID_CONDITIONS.join(", ")}` });
+    res
+      .status(400)
+      .json({ error: `condition must be one of: ${VALID_CONDITIONS.join(", ")}` });
     return;
   }
 
-  const parsedThreshold = parseFloat(threshold);
-  if (isNaN(parsedThreshold)) {
-    res.status(400).json({ error: "threshold must be a valid number" });
+  // Must be "native" or "CODE:ISSUER". Accepting a bare code would let a
+  // look-alike asset from any issuer match a threshold meant for the real one.
+  if (assetKey !== "native" && !/^[A-Za-z0-9]{1,12}:G[A-Z2-7]{55}$/.test(assetKey)) {
+    res.status(400).json({
+      error: 'assetKey must be "native" or "CODE:GISSUER" (issuer required)',
+    });
+    return;
+  }
+
+  const parsed = parseThreshold(threshold);
+  if (!parsed.ok) {
+    res.status(400).json({ error: parsed.error });
     return;
   }
 
@@ -45,24 +74,33 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const { notifyInApp, notifyEmail, notifyTelegram, notifyDiscord, discordWebhook } = req.body;
+  const {
+    notifyInApp,
+    notifyEmail,
+    notifyTelegram,
+    notifyDiscord,
+    discordWebhook,
+  } = req.body;
 
   if (notifyDiscord && !String(discordWebhook ?? "").trim()) {
-    res.status(400).json({ error: "discordWebhook is required when notifyDiscord is true" });
+    res
+      .status(400)
+      .json({ error: "discordWebhook is required when notifyDiscord is true" });
     return;
   }
 
   const alert = await prisma.alert.create({
     data: {
-      type,
+      type: "whale",
       name: sanitizedName,
-      token: token ?? null,
+      assetKey,
       condition,
-      threshold: parsedThreshold,
-      notifyInApp:    notifyInApp    !== undefined ? Boolean(notifyInApp)    : true,
-      notifyEmail:    notifyEmail    !== undefined ? Boolean(notifyEmail)    : false,
-      notifyTelegram: notifyTelegram !== undefined ? Boolean(notifyTelegram) : false,
-      notifyDiscord:  notifyDiscord  !== undefined ? Boolean(notifyDiscord)  : false,
+      thresholdStroops: parsed.stroops,
+      notifyInApp: notifyInApp !== undefined ? Boolean(notifyInApp) : true,
+      notifyEmail: notifyEmail !== undefined ? Boolean(notifyEmail) : false,
+      notifyTelegram:
+        notifyTelegram !== undefined ? Boolean(notifyTelegram) : false,
+      notifyDiscord: notifyDiscord !== undefined ? Boolean(notifyDiscord) : false,
       discordWebhook: notifyDiscord ? String(discordWebhook).trim() : null,
     },
   });
@@ -72,7 +110,16 @@ router.post("/", async (req, res) => {
 // PATCH /alerts/:id
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
-  const { enabled, name, threshold, notifyInApp, notifyEmail, notifyTelegram, notifyDiscord, discordWebhook } = req.body;
+  const {
+    enabled,
+    name,
+    threshold,
+    notifyInApp,
+    notifyEmail,
+    notifyTelegram,
+    notifyDiscord,
+    discordWebhook,
+  } = req.body;
   const update: Record<string, unknown> = {};
 
   if (enabled !== undefined) update.enabled = Boolean(enabled);
@@ -85,19 +132,21 @@ router.patch("/:id", async (req, res) => {
     update.name = sanitizedName;
   }
   if (threshold !== undefined) {
-    const parsedThreshold = parseFloat(threshold);
-    if (isNaN(parsedThreshold)) {
-      res.status(400).json({ error: "threshold must be a valid number" });
+    const parsed = parseThreshold(threshold);
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
       return;
     }
-    update.threshold = parsedThreshold;
+    update.thresholdStroops = parsed.stroops;
   }
-  if (notifyInApp    !== undefined) update.notifyInApp    = Boolean(notifyInApp);
-  if (notifyEmail    !== undefined) update.notifyEmail    = Boolean(notifyEmail);
+  if (notifyInApp !== undefined) update.notifyInApp = Boolean(notifyInApp);
+  if (notifyEmail !== undefined) update.notifyEmail = Boolean(notifyEmail);
   if (notifyTelegram !== undefined) update.notifyTelegram = Boolean(notifyTelegram);
-  if (notifyDiscord  !== undefined) {
+  if (notifyDiscord !== undefined) {
     update.notifyDiscord = Boolean(notifyDiscord);
-    update.discordWebhook = notifyDiscord ? String(discordWebhook ?? "").trim() || null : null;
+    update.discordWebhook = notifyDiscord
+      ? String(discordWebhook ?? "").trim() || null
+      : null;
   }
 
   const alert = await prisma.alert.update({ where: { id }, data: update });
