@@ -4,6 +4,7 @@
   "description": "Real-time whale and flow analytics for the Stellar DEX and Soroban",
   "author": "Ezedike Evan",
   "license": "MIT",
+  "packageManager": "pnpm@10.22.0",
   "engines": {
     "node": ">=24",
     "pnpm": ">=10"
