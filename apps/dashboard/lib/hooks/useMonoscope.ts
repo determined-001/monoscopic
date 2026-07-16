@@ -11,12 +11,7 @@ const MIN_BACKOFF_MS = 1_000;
 const MAX_BACKOFF_MS = 30_000;
 
 export function useMonoscopeSocket() {
-  const {
-    setConnected,
-    setLatestBlock,
-    addWhaleAlert,
-    setWhaleHistory,
-  } = useMonoscopeStore();
+  const { setConnected, addWhaleAlert, setWhaleHistory } = useMonoscopeStore();
   const { toast } = useToast();
 
   // Keep a ref so the cleanup callback always sees the current WebSocket
@@ -43,14 +38,15 @@ export function useMonoscopeSocket() {
       ws.onmessage = (event) => {
         try {
           const { event: type, data } = JSON.parse(event.data);
-          if (type === "block") setLatestBlock(data);
+          // No "block" event: Stellar closes ledgers on a ~5s protocol cadence,
+          // so there is no per-block stat stream to mirror the EVM version.
           if (type === "whale_alert") addWhaleAlert(data);
           if (type === "whale_history") setWhaleHistory(data);
           if (type === "alert_triggered") {
             const { alert, trigger } = data;
             toast.warning(
               `Alert: ${alert.name}`,
-              `${alert.condition} ${trigger.value}`,
+              `${alert.condition} ${trigger.valueStroops} stroops`,
             );
           }
         } catch (err) {

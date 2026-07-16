@@ -4,24 +4,40 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
 import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
+import { useMonoscopeStore } from "@/lib/store/useMonoscope";
+import { useHealth } from "@/lib/hooks/useHealth";
 
-function MonadHexIcon() {
+function StellarIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <polygon points="8,1.5 13.5,4.75 13.5,11.25 8,14.5 2.5,11.25 2.5,4.75" fill="none" stroke="#9370FF" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="6.5" fill="none" stroke="#9370FF" strokeWidth="1.5" />
+      <path d="M3 10.5 L13 5.5" stroke="#9370FF" strokeWidth="1.5" strokeLinecap="round" />
       <circle cx="8" cy="8" r="2" fill="#9370FF" />
     </svg>
   );
 }
 
-const AVATAR_COLORS = [
-  { h1: 264, h2: 220, h3: 300 },
-  { h1: 180, h2: 210, h3: 160 },
-  { h1: 30,  h2: 50,  h3: 20  },
-  { h1: 320, h2: 280, h3: 350 },
-  { h1: 120, h2: 150, h3: 100 },
-];
+/** "native" -> "XLM"; "USDC:GA..." -> "USDC". */
+function assetLabel(assetKey: string): string {
+  return assetKey === "native" ? "XLM" : (assetKey.split(":")[0] ?? assetKey);
+}
+
+/** Trim Horizon's fixed 7-decimal string for display without touching the value. */
+function formatAmount(amount: string): string {
+  const [whole, frac = ""] = amount.split(".");
+  const n = Number(whole);
+  const grouped = Number.isFinite(n) ? n.toLocaleString() : whole;
+  const trimmed = frac.replace(/0+$/, "");
+  return trimmed ? `${grouped}.${trimmed}` : grouped!;
+}
+
+function timeAgo(iso: string): string {
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  return `${Math.floor(s / 3600)}h ago`;
+}
 
 export function Hero() {
   const sectionRef  = useRef<HTMLElement>(null);
@@ -33,6 +49,43 @@ export function Hero() {
   const socialRef   = useRef<HTMLDivElement>(null);
   const mockupRef   = useRef<HTMLDivElement>(null);
   const scrollRef   = useRef<HTMLDivElement>(null);
+
+  const connected   = useMonoscopeStore((s) => s.connected);
+  const whaleAlerts = useMonoscopeStore((s) => s.whaleAlerts);
+  const health      = useHealth();
+
+  const recent = whaleAlerts.slice(0, 3);
+
+  // Every tile below traces to the socket or /health. No literals: an invented
+  // number is indistinguishable from a measured one once it is rendered, so the
+  // rule is that a number may only reach the DOM if it came from the API.
+  const latest = whaleAlerts[0];
+  const stats = [
+    {
+      label: "Latest ledger",
+      value: latest ? `#${latest.opId.split(":")[0]!.slice(0, 8)}` : "—",
+      sub: latest ? timeAgo(latest.closedAt) : "waiting",
+      color: "#836EF9",
+    },
+    {
+      label: "Feed",
+      value: health?.feed.live ? "Live" : health ? "Stalled" : "—",
+      sub: health?.feed.lastRecordAgo ?? "connecting",
+      color: health?.feed.live ? "#22C55E" : "#FBBF24",
+    },
+    {
+      label: "Whale events",
+      value: whaleAlerts.length ? String(whaleAlerts.length) : "—",
+      sub: "this session",
+      color: "#38BDF8",
+    },
+    {
+      label: "Attestations",
+      value: health?.soroban.triggerCount ?? "—",
+      sub: "on-chain",
+      color: "#38BDF8",
+    },
+  ];
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -70,8 +123,8 @@ export function Hero() {
         {/* Badge */}
         <div ref={badgeRef} className="mb-8 opacity-0">
           <div className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2", "bg-[#16132A] border border-[#2A2545]", "text-purple-400 text-[13px] font-medium")}>
-            <MonadHexIcon />
-            Built for Monad
+            <StellarIcon />
+            Built for Stellar
           </div>
         </div>
 
@@ -89,7 +142,7 @@ export function Hero() {
 
         {/* Sub */}
         <p ref={subRef} className={cn("text-center max-w-[560px] opacity-0", "text-[16px] md:text-[18px] leading-relaxed", "text-[#9490A8]", "mb-10")}>
-          Whale intelligence, real-time alerts, and on-chain signals — all in one place for the Monad ecosystem.
+          Real-time whale and flow analytics for the Stellar DEX and Soroban — streamed from Horizon, attested on-chain.
         </p>
 
         {/* CTA */}
@@ -102,16 +155,18 @@ export function Hero() {
           </Link>
         </div>
 
-        {/* Social proof */}
+        {/* Network label. There is no user count to show — the project has no
+            users yet, so there is no honest version of "trusted by N traders".
+            What IS true is which networks the feed and attestations run on, and
+            saying so plainly is worth more than a fabricated number. */}
         <div ref={socialRef} className="mb-20 md:mb-24 opacity-0">
           <div className="flex items-center gap-3">
-            <div className="flex items-center">
-              {AVATAR_COLORS.map(({ h1, h2, h3 }, i) => (
-                <div key={i} aria-hidden="true" className="h-7 w-7 rounded-full ring-2 ring-[#0D0B14] shrink-0" style={{ marginLeft: i === 0 ? 0 : "-8px", zIndex: AVATAR_COLORS.length - i, background: `conic-gradient(from 0deg, hsl(${h1},70%,58%), hsl(${h2},65%,52%), hsl(${h3},70%,56%), hsl(${h1},70%,58%))` }} />
-              ))}
-            </div>
             <p className="text-[13px] font-medium text-[#5E5A72]">
-              Trusted by <span className="text-[#9490A8] font-semibold">12,000+</span> traders on Monad
+              Feed:{" "}
+              <span className="text-[#9490A8] font-semibold">Stellar Mainnet</span>
+              <span className="mx-2 text-white/15">·</span>
+              Attestations:{" "}
+              <span className="text-[#9490A8] font-semibold">Stellar Testnet</span>
             </p>
           </div>
         </div>
@@ -128,18 +183,14 @@ export function Hero() {
                 <div className="h-[10px] w-[10px] rounded-full bg-[#28C840]" />
               </div>
               <div className="mx-auto flex h-6 w-[240px] items-center justify-center rounded-md bg-white/5 px-3">
-                <span className="text-[11px] text-white/30 font-mono">app.monoscope.xyz/dashboard</span>
+                <span className="text-[11px] text-white/30 font-mono">/dashboard</span>
               </div>
             </div>
-            {/* Dashboard preview */}
+            {/* Dashboard preview — every value below comes from the live API.
+                Nothing here is a literal. */}
             <div className="relative p-4 md:p-6" style={{ minHeight: "420px" }}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                {[
-                  { label: "Latest Block", value: "#7,284,193", sub: "42 txns", color: "#836EF9" },
-                  { label: "TPS",          value: "4,218",      sub: "tx/sec",  color: "#22C55E" },
-                  { label: "Gas Load",     value: "Moderate",   sub: "58% used",color: "#FBBF24" },
-                  { label: "Whale Moves",  value: "1,284",      sub: "today",   color: "#38BDF8" },
-                ].map(({ label, value, sub, color }) => (
+                {stats.map(({ label, value, sub, color }) => (
                   <div key={label} className="rounded-xl bg-[#16132A] border border-white/[0.06] p-3 md:p-4">
                     <p className="text-[10px] md:text-[11px] text-[#5E5A72] font-medium mb-1.5">{label}</p>
                     <p className="text-[15px] md:text-[18px] font-bold leading-none" style={{ color }}>{value}</p>
@@ -150,38 +201,80 @@ export function Hero() {
               <div className="flex gap-3 md:gap-4">
                 <div className="flex-1 rounded-xl bg-[#16132A] border border-white/[0.06] p-4" style={{ minHeight: "220px" }}>
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-[12px] font-semibold text-white/70">Live Whale Activity</p>
-                    <span className="flex items-center gap-1.5 text-[10px] text-[#22C55E] font-medium">
-                      <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-75" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]" /></span>
-                      Live
-                    </span>
+                    <p className="text-[12px] font-semibold text-white/70">Whale Activity</p>
+                    {/* The "Live" badge is driven by the socket, not hardcoded.
+                        A pinging green dot over a dead feed is a lie the user
+                        cannot detect — so when the socket is down it says so. */}
+                    {connected ? (
+                      <span className="flex items-center gap-1.5 text-[10px] text-[#22C55E] font-medium">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22C55E] opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#22C55E]" />
+                        </span>
+                        Live
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-[10px] text-white/30 font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-white/25" />
+                        Connecting…
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2.5">
-                    {[
-                      { addr: "0x4a2b…f7c3", amount: "2.1M MON", ago: "2m ago", color: "#22C55E" },
-                      { addr: "0x91c7…2e8d", amount: "890K MON", ago: "5m ago", color: "#EF4444" },
-                      { addr: "0xf3d1…9b4c", amount: "1.4M MON", ago: "9m ago", color: "#22C55E" },
-                    ].map(({ addr, amount, ago, color }, i) => (
-                      <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.05] last:border-0">
-                        <div className="h-7 w-7 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0"><span className="text-[10px] text-purple-400">⬡</span></div>
-                        <div className="flex-1 min-w-0"><p className="font-mono text-[11px] text-white/60">{addr}</p><p className="text-[9px] text-white/25">{ago}</p></div>
-                        <span className="text-[12px] font-bold font-mono" style={{ color }}>{amount}</span>
-                      </div>
-                    ))}
+                    {recent.length === 0 ? (
+                      <p className="text-[11px] text-white/25 py-6 text-center">
+                        {connected
+                          ? "Waiting for the next whale…"
+                          : "Not connected to the feed."}
+                      </p>
+                    ) : (
+                      recent.map((w) => (
+                        <div key={w.opId} className="flex items-center gap-3 py-2 border-b border-white/[0.05] last:border-0">
+                          <div className="h-7 w-7 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0"><span className="text-[10px] text-purple-400">⬡</span></div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-mono text-[11px] text-white/60">{truncateAddress(w.from)}</p>
+                            <p className="text-[9px] text-white/25">{timeAgo(w.closedAt)}</p>
+                          </div>
+                          <span className="text-[12px] font-bold font-mono text-[#22C55E]">
+                            {formatAmount(w.amount)} {assetLabel(w.assetKey)}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
+                {/* On-chain proof panel. Replaces a list of invented alerts with
+                    the one thing here that a stranger can independently verify:
+                    the contract this pipeline actually writes to. */}
                 <div className="hidden md:flex flex-col w-[200px] shrink-0 rounded-xl bg-[#16132A] border border-white/[0.06] p-4">
-                  <p className="text-[12px] font-semibold text-white/70 mb-3">Active Alerts</p>
-                  {[
-                    { name: "Whale >1M MON", status: "Active", color: "#22C55E" },
-                    { name: "Gas > 80%",     status: "Triggered", color: "#FBBF24" },
-                    { name: "0x4a2b wallet", status: "Active", color: "#22C55E" },
-                  ].map(({ name, status, color }, i) => (
-                    <div key={i} className="flex items-center justify-between py-2 border-b border-white/[0.05] last:border-0">
-                      <p className="text-[11px] text-white/60 truncate flex-1 mr-2">{name}</p>
-                      <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full" style={{ color, backgroundColor: `${color}18` }}>{status}</span>
-                    </div>
-                  ))}
+                  <p className="text-[12px] font-semibold text-white/70 mb-3">On-chain registry</p>
+                  <div className="flex items-center justify-between py-2 border-b border-white/[0.05]">
+                    <p className="text-[11px] text-white/60">Network</p>
+                    <span className="text-[9px] font-semibold px-2 py-0.5 rounded-full text-[#38BDF8] bg-[#38BDF818]">
+                      Testnet
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 border-b border-white/[0.05]">
+                    <p className="text-[11px] text-white/60">Attestations</p>
+                    <span className="text-[11px] font-mono text-white/60">
+                      {health?.soroban?.triggerCount ?? "—"}
+                    </span>
+                  </div>
+                  <div className="py-2">
+                    <p className="text-[11px] text-white/60 mb-1">Contract</p>
+                    {health?.soroban?.contract ? (
+                      <a
+                        href={health.soroban.contract}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-[9px] text-purple-400 hover:text-purple-300 break-all"
+                      >
+                        {health.soroban.contractId?.slice(0, 10)}…
+                      </a>
+                    ) : (
+                      <span className="font-mono text-[9px] text-white/25">—</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

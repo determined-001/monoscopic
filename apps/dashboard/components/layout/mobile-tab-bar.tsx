@@ -79,7 +79,7 @@ function MoreSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }
                   <p className="text-xs text-[var(--text-muted)]">Connected</p>
                 </div>
               </div>
-              <Badge variant="network">Monad Testnet</Badge>
+              <Badge variant="network">Stellar Mainnet</Badge>
             </div>
             <div className="h-4" />
           </motion.div>

@@ -74,17 +74,21 @@ function SearchSection() {
 
     const out: SearchResult[] = [];
 
-    // Search whale activity — match address or tx hash
+    // Search whale activity — match address or tx hash. txHash is nullable:
+    // Horizon trade records carry no transaction hash, so it cannot be searched
+    // or used as a key for those.
     for (const w of whaleAlerts) {
       if (
         w.from.toLowerCase().includes(q) ||
         w.to.toLowerCase().includes(q) ||
-        w.txHash.toLowerCase().includes(q)
+        (w.txHash?.toLowerCase().includes(q) ?? false)
       ) {
         out.push({
-          id: w.txHash,
+          id: w.opId,
           label: truncateAddress(w.from),
-          sub: `Tx ${truncateAddress(w.txHash)} · block #${w.blockNumber}`,
+          sub: w.txHash
+            ? `Tx ${truncateAddress(w.txHash)} · ledger #${w.ledger}`
+            : `${w.kind} · ledger #${w.ledger}`,
           href: "/whales",
           icon: "whale",
         });
@@ -96,12 +100,12 @@ function SearchSection() {
     for (const a of alerts) {
       if (
         a.name.toLowerCase().includes(q) ||
-        (a.token ?? "").toLowerCase().includes(q)
+        (a.assetKey ?? "").toLowerCase().includes(q)
       ) {
         out.push({
           id: a.id,
           label: a.name,
-          sub: `${a.type} · ${a.condition} ${a.threshold}`,
+          sub: `${a.type} · ${a.condition} ${a.thresholdStroops} stroops`,
           href: "/alerts",
           icon: "alert",
         });
@@ -261,7 +265,7 @@ export function Navbar() {
         {/* Right: Search + Network */}
         <div className="flex items-center justify-end gap-3 w-[200px] md:w-auto">
           <SearchSection />
-          <Badge variant="network">Monad Testnet</Badge>
+          <Badge variant="network">Stellar Mainnet</Badge>
         </div>
       </div>
     </header>

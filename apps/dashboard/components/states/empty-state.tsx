@@ -71,7 +71,7 @@ export function EmptyTransactions({ onAction }: { onAction?: () => void }) {
     <EmptyState
       icon={ArrowLeftRight}
       title="No transactions yet"
-      description="Your transaction history will appear here once you start trading on Monad."
+      description="Whale activity will appear here as large payments cross the Stellar network."
       actionLabel="Explore Tokens"
       onAction={onAction}
     />

@@ -129,7 +129,7 @@ const STEPS = [
   {
     number: "01",
     title: "Track the smart money",
-    description: "Our indexer processes every Monad block in real time, tagging known whale wallets and labeled addresses. Watch their moves as they happen — transfers and contract interactions — updated every second.",
+    description: "We stream Stellar payments and DEX trades from Horizon as ledgers close, roughly every 5 seconds. Operations from failed transactions are discarded, and path payments are split into their source and destination legs so each asset is reported with its own amount.",
     imageLeft: true,
     mockup: <WhaleMockup />,
   },

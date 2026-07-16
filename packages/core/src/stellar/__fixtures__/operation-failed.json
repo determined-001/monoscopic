@@ -1,0 +1,33 @@
+{
+  "_links": {
+    "self": {
+      "href": "https://horizon.stellar.org/operations/272658276435746882"
+    },
+    "transaction": {
+      "href": "https://horizon.stellar.org/transactions/8ee5327d2bcf19883d1b8692556c6cfa5644e7a69a68014b63ac0d61cb92eb72"
+    },
+    "effects": {
+      "href": "https://horizon.stellar.org/operations/272658276435746882/effects"
+    },
+    "succeeds": {
+      "href": "https://horizon.stellar.org/effects?order=desc&cursor=272658276435746882"
+    },
+    "precedes": {
+      "href": "https://horizon.stellar.org/effects?order=asc&cursor=272658276435746882"
+    }
+  },
+  "id": "272658276435746882",
+  "paging_token": "272658276435746882",
+  "transaction_successful": false,
+  "source_account": "GC5HBIPAKK3Z3OV5XKAIHLXPZLVDI6ERAJA2RWSQEKXFOXENLGOQIZR4",
+  "type": "payment",
+  "type_i": 1,
+  "created_at": "2026-07-15T05:02:39Z",
+  "transaction_hash": "8ee5327d2bcf19883d1b8692556c6cfa5644e7a69a68014b63ac0d61cb92eb72",
+  "asset_type": "credit_alphanum12",
+  "asset_code": "FLIPTRUMP",
+  "asset_issuer": "GDHTK7WKUOV3HPHMSY4VJRGWIGIPZAUJBR4ILG47KHMH3LCGEG665RFN",
+  "from": "GC5HBIPAKK3Z3OV5XKAIHLXPZLVDI6ERAJA2RWSQEKXFOXENLGOQIZR4",
+  "to": "GAPYVMAB7FWKSOF5RWYXSIM6CKGUC4XFDRYT5V62SRSHVWDX6HE3RHTF",
+  "amount": "800.0000000"
+}

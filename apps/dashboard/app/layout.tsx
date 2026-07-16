@@ -29,11 +29,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Monoscope — On-chain Intelligence for Monad",
+    default: "Monoscope — Real-time whale alerts for Stellar",
     template: "%s | Monoscope",
   },
   description:
-    "Real-time whale tracking and custom alerts for the Monad ecosystem.",
+    "Real-time whale and flow analytics for the Stellar DEX and Soroban.",
 };
 
 // ─── Root Layout ──────────────────────────────────────────────────────────────
